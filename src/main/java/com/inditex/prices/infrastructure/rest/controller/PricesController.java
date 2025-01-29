@@ -1,5 +1,6 @@
 package com.inditex.prices.infrastructure.rest.controller;
 
+import com.inditex.prices.domain.port.exception.ProductNotFoundException;
 import com.inditex.prices.infrastructure.jpaadapter.input.PriceInputAdapter;
 import com.inditex.prices.infrastructure.rest.dto.request.PriceRequest;
 import com.inditex.prices.infrastructure.rest.dto.response.PriceResponse;
@@ -7,14 +8,14 @@ import jakarta.validation.Valid;
 import lombok.AllArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.BindingResult;
-import org.springframework.validation.FieldError;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Optional;
-import java.util.stream.Collectors;
 
 @RestController
 @AllArgsConstructor
@@ -25,14 +26,15 @@ public class PricesController {
 
     @GetMapping("/filter")
     public ResponseEntity<PriceResponse> filterPrices(@Valid @ModelAttribute PriceRequest priceRequest, BindingResult result) {
-        if (result.hasErrors()) { //TODO review
+        if (result.hasErrors()) {
             PriceResponse errorResponse = new PriceResponse();
-            errorResponse.setErrors(result.getFieldErrors().stream()
-                    .collect(Collectors.toMap(
-                            FieldError::getField,
-                            FieldError::getDefaultMessage
-                    ))
+            Map<String, String> validationErrors = new HashMap<>();
+
+            result.getFieldErrors().forEach(error ->
+                    validationErrors.put(error.getField(), error.getDefaultMessage())
             );
+
+            errorResponse.setErrors(validationErrors);
             return ResponseEntity.badRequest().body(errorResponse);
         }
         Optional<PriceResponse> optionalPrice = priceInputAdapter.filterPrices(
@@ -41,6 +43,9 @@ public class PricesController {
                 priceRequest.getBrandId()
         );
         return optionalPrice.map(ResponseEntity::ok) // TODO missing map with other. mapper.
-                .orElseGet(ResponseEntity.notFound()::build);
+                .orElseThrow(() -> new ProductNotFoundException(
+                        "Product not found " + priceRequest.getProductId() +
+                                " on date " + priceRequest.getDate()
+                ));
     }
 }

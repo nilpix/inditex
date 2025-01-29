@@ -5,6 +5,7 @@ import com.inditex.prices.domain.port.output.PriceRepository;
 import com.inditex.prices.infrastructure.jpaadapter.mapper.PriceMapper;
 import com.inditex.prices.infrastructure.jpaadapter.output.persistence.JpaPriceRepository;
 import lombok.AllArgsConstructor;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
@@ -20,6 +21,7 @@ public class PriceServiceAdapterImpl implements PriceRepository {
 
     @Override
     public Optional<Price> filterPrices(LocalDateTime filterDate, Long productId, Long brandId) {
-        return null;
+        return jpaPriceRepository.filterPrices(filterDate, productId, brandId, Sort.by(PRIORITY).descending())
+                .stream().findFirst().map(mapper::toDomain);
     }
 }
